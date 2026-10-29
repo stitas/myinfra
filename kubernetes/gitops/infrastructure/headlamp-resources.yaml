@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: headlamp-resources
+  namespace: argocd
+
+spec:
+  project: infrastructure
+
+  source:
+    repoURL: https://github.com/stitas/myinfra.git
+    targetRevision: master
+    path: kubernetes/resources/headlamp
+    directory:
+      include: "{credentials.yaml,middleware.yaml}"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: headlamp
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
