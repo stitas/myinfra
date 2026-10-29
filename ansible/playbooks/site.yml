@@ -1,0 +1,22 @@
+---
+- name: Configure base VPS
+  hosts: vps
+  become: true
+
+  tasks:
+    - name: Harden SSH
+      ansible.builtin.import_role:
+        name: security
+        tasks_from: ssh
+    
+    - name: Configure Docker repository
+      ansible.builtin.import_role:
+        name: docker
+
+    - name: Install K3s
+      ansible.builtin.import_role:
+        name: k3s
+
+    - name: Install ArgoCD
+      ansible.builtin.import_role:
+        name: argocd

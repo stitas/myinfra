@@ -1,0 +1,19 @@
+---
+- name: Download K3s installer
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /usr/local/src/install-k3s.sh
+    mode: "0700"
+
+- name: Install K3s server
+  ansible.builtin.command:
+    cmd: /usr/local/src/install-k3s.sh
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_EXEC: server
+
+- name: Enable and start K3s
+  ansible.builtin.systemd_service:
+    name: k3s
+    enabled: true
+    state: started

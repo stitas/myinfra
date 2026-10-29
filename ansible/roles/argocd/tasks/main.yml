@@ -1,0 +1,53 @@
+---
+- name: Install Argo CD Helm chart
+  ansible.builtin.copy:
+    dest: /var/lib/rancher/k3s/server/manifests/argocd.yaml
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChart
+      metadata:
+        name: argocd
+        namespace: kube-system
+      spec:
+        repo: https://argoproj.github.io/argo-helm
+        chart: argo-cd
+        version: "10.11.6"
+        targetNamespace: argocd
+        createNamespace: true
+        valuesContent: |
+          server:
+            service:
+              type: ClusterIP
+            ingress:
+              enabled: false
+
+- name: Wait for Argo CD CRDs
+  ansible.builtin.command:
+    cmd: >
+      k3s kubectl wait
+      --for=condition=Established
+      --timeout=300s
+      crd/appprojects.argoproj.io
+      crd/applications.argoproj.io
+  changed_when: false
+
+- name: Bootstrap Argo CD projects
+  ansible.builtin.command:
+    cmd: k3s kubectl apply -f -
+    stdin: "{{ lookup('file', playbook_dir ~ '/../../kubernetes/gitops/projects.yaml') }}"
+  register: argocd_projects_apply
+  changed_when: >
+    'created' in argocd_projects_apply.stdout or
+    'configured' in argocd_projects_apply.stdout
+
+- name: Bootstrap root Argo CD Application
+  ansible.builtin.command:
+    cmd: k3s kubectl apply -f -
+    stdin: "{{ lookup('file', playbook_dir ~ '/../../kubernetes/bootstrap/gitops-manager.yaml') }}"
+  register: argocd_root_apply
+  changed_when: >
+    'created' in argocd_root_apply.stdout or
+    'configured' in argocd_root_apply.stdout

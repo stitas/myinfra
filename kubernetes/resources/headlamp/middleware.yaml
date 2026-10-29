@@ -1,0 +1,11 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: headlamp-auth
+  namespace: headlamp
+
+spec:
+  basicAuth:
+    secret: headlamp-basic-auth
+    headerField: X-Forwarded-User
+    removeHeader: true

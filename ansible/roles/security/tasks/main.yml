@@ -1,0 +1,34 @@
+---
+- name: Create admin user
+  ansible.builtin.user:
+    name: admin
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Create SSH directory
+  ansible.builtin.file:
+    path: /home/admin/.ssh
+    state: directory
+    owner: admin
+    group: admin
+    mode: "0700"
+
+- name: Configure SSH public key
+  ansible.builtin.copy:
+    dest: /home/admin/.ssh/authorized_keys
+    content: "{{ lookup('file', lookup('env', 'HOME') ~ '/.ssh/meka_admin.pub') }}\n"
+    owner: admin
+    group: admin
+    mode: "0600"
+
+- name: Configure passwordless sudo
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/admin
+    content: "admin ALL=(ALL:ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s

@@ -1,0 +1,8 @@
+---
+- name: Bootstrap fresh VPS
+  hosts: vps
+  become: true
+
+  roles:
+    - common
+    - security

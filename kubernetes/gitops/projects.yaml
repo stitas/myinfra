@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infrastructure
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+
+spec:
+  description: Kubernetes infrastructure and cluster services
+
+  sourceRepos:
+    - https://github.com/stitas/myinfra.git
+    - https://charts.jetstack.io
+    - https://bitnami.github.io/sealed-secrets
+    - https://kubernetes-sigs.github.io/headlamp/
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: applications
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+
+spec:
+  description: Personal websites, APIs and services
+
+  sourceRepos:
+    - https://github.com/stitas/*
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "app-*"
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+      name: "app-*"

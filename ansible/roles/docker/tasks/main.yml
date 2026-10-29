@@ -1,0 +1,50 @@
+---
+- name: Install Docker repository dependencies
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - python3-debian
+    state: present
+
+- name: Add Docker repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: [deb]
+    uris: https://download.docker.com/linux/ubuntu
+    suites: "{{ ansible_facts['distribution_release'] }}"
+    components: [stable]
+    signed_by: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  register: docker_repo
+
+- name: Install Docker
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: "{{ docker_repo.changed }}"
+
+- name: Configure Docker logging
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+    content: |
+      {
+        "log-driver": "local",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      }
+    validate: /usr/bin/dockerd --validate --config-file=%s
+  register: docker_config
+
+- name: Enable and manage Docker
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: "{{ 'restarted' if docker_config.changed else 'started' }}"
