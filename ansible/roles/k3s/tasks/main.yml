@@ -17,3 +17,11 @@
     name: k3s
     enabled: true
     state: started
+  
+- name: Configure PostgreSQL endpoint
+  ansible.builtin.copy:
+    src: postgresql-endpoint.yaml
+    dest: /var/lib/rancher/k3s/server/manifests/postgresql-endpoint.yaml
+    owner: root
+    group: root
+    mode: "0644"
