@@ -23,7 +23,3 @@ Run compose with:
 ```bash
 sudo docker compose up -d
 ```
-
-## TODO
-
-- Make ArgoCD not poll but work with webhooks
