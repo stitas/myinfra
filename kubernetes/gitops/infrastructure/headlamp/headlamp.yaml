@@ -15,6 +15,7 @@ spec:
       valuesObject:
         config:
           inCluster: true
+          unsafeUseServiceAccountToken: true # Safe, because protected with auth proxy
           extraArgs:
             - "-proxy-auth=true"
 
