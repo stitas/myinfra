@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily VPS backup timer
+
+[Timer]
+OnCalendar={{ backup_schedule }}
+Persistent=true
+RandomizedDelaySec={{ backup_randomized_delay }}
+Unit=backup.service
+
+[Install]
+WantedBy=timers.target

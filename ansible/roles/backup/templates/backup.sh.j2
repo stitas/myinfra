@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+# Ansible-managed. Run as root using backup.service.
+LOCAL_REPO={{ backup_local_repository | quote }}
+B2_ENABLED={{ backup_b2_enabled | ternary('true', 'false') }}
+B2_REPO={{ backup_b2_repository | quote }}
+MEDIA_ENABLED={{ backup_media_enabled | ternary('true', 'false') }}
+MEDIA_PATH={{ backup_media_path | quote }}
+KEEP_DAILY={{ backup_keep_daily }}
+KEEP_WEEKLY={{ backup_keep_weekly }}
+KEEP_MONTHLY={{ backup_keep_monthly }}
+
+export RESTIC_PASSWORD_FILE=/etc/backup/restic-password
+STAGING_DIR=/var/lib/backup/staging
+DUMP="$STAGING_DIR/postgresql.sql"
+
+# Prevent overlapping runs (timer/manual).
+exec 9>/run/lock/backup.lock
+if ! flock -n 9; then
+  echo "ERROR: Another VPS backup is already running" >&2
+  exit 1
+fi
+
+mkdir -p "$STAGING_DIR"
+TMP=$(mktemp "$DUMP.tmp.XXXXXXXX")
+# Do not leave a plaintext database dump on disk after the job.
+trap 'rm -f -- "$TMP" "$DUMP"' EXIT
+
+echo "[$(date -Is)] Exporting all PostgreSQL databases and roles"
+if ! docker compose -f /opt/postgresql/compose.yaml exec -T postgres \
+  pg_dumpall -U postgres > "$TMP"; then
+  echo "ERROR: PostgreSQL dump failed; no repositories will be updated" >&2
+  exit 1
+fi
+if [[ ! -s "$TMP" ]]; then
+  echo "ERROR: PostgreSQL dump is empty" >&2
+  exit 1
+fi
+mv -f -- "$TMP" "$DUMP"
+
+sources=("$DUMP")
+if [[ "$MEDIA_ENABLED" == true ]]; then
+  if [[ ! -d "$MEDIA_PATH" ]]; then
+    echo "ERROR: Configured media directory does not exist: $MEDIA_PATH" >&2
+    exit 1
+  fi
+  sources+=("$MEDIA_PATH")
+fi
+
+backup_to() {
+  local name="$1" repo="$2"
+  echo "[$(date -Is)] Backing up to $name"
+  if ! restic -r "$repo" backup "${sources[@]}"; then
+    echo "ERROR: Backup to $name failed" >&2
+    return 1
+  fi
+  if ! restic -r "$repo" forget \
+      --keep-daily "$KEEP_DAILY" \
+      --keep-weekly "$KEEP_WEEKLY" \
+      --keep-monthly "$KEEP_MONTHLY" \
+      --prune; then
+    echo "ERROR: Retention/prune on $name failed" >&2
+    return 1
+  fi
+  echo "[$(date -Is)] Finished $name"
+}
+
+# Always attempt both destinations, even if the first fails.
+failed=0
+if ! backup_to local "$LOCAL_REPO"; then
+  failed=1
+fi
+
+if [[ "$B2_ENABLED" == true ]]; then
+  if [[ ! -r /etc/backup/b2.env ]]; then
+    echo "ERROR: B2 credential file missing" >&2
+    failed=1
+  elif ! (
+    set -a
+    source /etc/backup/b2.env
+    set +a
+    backup_to b2 "$B2_REPO"
+  ); then
+    failed=1
+  fi
+fi
+
+if (( failed )); then
+  echo "[$(date -Is)] One or more backup destinations FAILED" >&2
+  exit 1
+fi
+
+echo "[$(date -Is)] Backup successful"

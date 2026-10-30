@@ -1,0 +1,133 @@
+---
+- name: Install backup dependencies
+  ansible.builtin.apt:
+    name:
+      - restic
+      - openssl
+      - util-linux
+    state: present
+    update_cache: false
+
+- name: Create protected backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - /etc/backup
+    - /srv/backups
+    - /var/lib/backup/staging
+
+- name: Install Restic encryption password
+  ansible.builtin.copy:
+    content: "{{ backup_restic_password }}\n"
+    dest: /etc/backup/restic-password
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Check B2 repository configuration when enabled
+  ansible.builtin.assert:
+    that:
+      - backup_b2_repository | length > 0
+      - backup_b2_repository is match('^s3:https?://')
+    fail_msg: "Set backup_b2_repository to the real private B2 bucket S3 URL before enabling B2."
+  when: backup_b2_enabled | bool
+
+- name: Install Backblaze B2 credentials
+  ansible.builtin.template:
+    src: b2.env.j2
+    dest: /etc/backup/b2.env
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: backup_b2_enabled | bool
+
+- name: Initialize local Restic repository once
+  ansible.builtin.command:
+    argv:
+      - restic
+      - -r
+      - "{{ backup_local_repository }}"
+      - init
+    creates: "{{ backup_local_repository }}/config"
+  environment:
+    RESTIC_PASSWORD_FILE: /etc/backup/restic-password
+
+- name: Check remote Restic repository
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    source /etc/backup/b2.env
+    set +a
+
+    restic -r {{ backup_b2_repository | quote }} cat config >/dev/null
+  args:
+    executable: /bin/bash
+  environment:
+    RESTIC_PASSWORD_FILE: /etc/backup/restic-password
+  register: backup_b2_check
+  changed_when: false
+  failed_when: backup_b2_check.rc not in [0, 10]
+  no_log: true
+  when: backup_b2_enabled | bool
+
+- name: Initialize remote Restic repository
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    source /etc/backup/b2.env
+    set +a
+
+    restic -r {{ backup_b2_repository | quote }} init
+  args:
+    executable: /bin/bash
+  environment:
+    RESTIC_PASSWORD_FILE: /etc/backup/restic-password
+  no_log: true
+  when:
+    - backup_b2_enabled | bool
+    - backup_b2_check.rc == 10
+
+- name: Install backup executable
+  ansible.builtin.template:
+    src: backup.sh.j2
+    dest: /usr/local/sbin/backup
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install daily backup service
+  ansible.builtin.template:
+    src: backup.service.j2
+    dest: /etc/systemd/system/backup.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install daily backup timer
+  ansible.builtin.template:
+    src: backup.timer.j2
+    dest: /etc/systemd/system/backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  register: backup_timer_unit
+
+- name: Enable and start daily backup timer
+  ansible.builtin.systemd_service:
+    name: backup.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Restart timer when schedule is updated
+  ansible.builtin.systemd_service:
+    name: backup.timer
+    state: restarted
+    daemon_reload: true
+  when: backup_timer_unit.changed

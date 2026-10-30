@@ -24,3 +24,7 @@
     - name: Configure PostgreSQL
       ansible.builtin.import_role:
         name: postgresql
+
+    - name: Configure backups
+      ansible.builtin.import_role:
+        name: backup
