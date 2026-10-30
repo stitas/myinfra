@@ -18,16 +18,32 @@
         targetNamespace: argocd
         createNamespace: true
         valuesContent: |
+          global:
+            domain: argocd.stitas.dev
+
           configs:
             cm:
               timeout.reconciliation: "30s"
               timeout.reconciliation.jitter: "10s"
+            params:
+              server.insecure: true # Disable HTTPS in ArgoCD, because Traefik handles it
 
           server:
             service:
               type: ClusterIP
+
             ingress:
-              enabled: false
+              enabled: true
+              ingressClassName: traefik
+
+              annotations:
+                cert-manager.io/cluster-issuer: letsencrypt
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+              extraTls:
+                - hosts:
+                    - argocd.stitas.dev
+                  secretName: argocd-ingress-tls
 
 - name: Wait for Argo CD CRDs
   ansible.builtin.command:
