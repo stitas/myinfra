@@ -20,3 +20,7 @@
     - name: Install ArgoCD
       ansible.builtin.import_role:
         name: argocd
+
+    - name: Configure PostgreSQL
+      ansible.builtin.import_role:
+        name: postgresql

@@ -1,0 +1,51 @@
+
+- name: Install OpenSSL
+  ansible.builtin.apt:
+    name: openssl
+    state: present
+
+- name: Create PostgreSQL directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /opt/postgresql
+      mode: "0755"
+    - path: /etc/postgresql
+      mode: "0700"
+    - path: /srv/postgresql
+      mode: "0755"
+
+- name: Create PostgreSQL data directory
+  ansible.builtin.file:
+    path: /srv/postgresql/data
+    state: directory
+
+- name: Generate PostgreSQL password if missing
+  ansible.builtin.shell: |
+    umask 077
+    openssl rand -hex 32 > /etc/postgresql/superuser-password
+  args:
+    creates: /etc/postgresql/superuser-password
+  no_log: true
+
+- name: Install PostgreSQL Compose configuration
+  ansible.builtin.copy:
+    src: compose.yaml
+    dest: /opt/postgresql/compose.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Start PostgreSQL
+  ansible.builtin.command:
+    cmd: docker compose up -d --wait --wait-timeout 120
+    chdir: /opt/postgresql
+  register: postgres_compose
+  changed_when: >
+    'Created' in postgres_compose.stderr or
+    'Recreated' in postgres_compose.stderr or
+    'Started' in postgres_compose.stderr
