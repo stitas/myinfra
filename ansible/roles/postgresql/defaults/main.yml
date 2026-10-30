@@ -1,0 +1,7 @@
+postgresql_databases:
+  - name: umami
+    user: umami
+
+  # Add more dbs using
+  # - name: new_db
+  #   user: new_db

@@ -1,4 +1,3 @@
-
 - name: Install OpenSSL
   ansible.builtin.apt:
     name: openssl
@@ -49,3 +48,6 @@
     'Created' in postgres_compose.stderr or
     'Recreated' in postgres_compose.stderr or
     'Started' in postgres_compose.stderr
+
+- name: Provision application databases
+  ansible.builtin.import_tasks: databases.yml

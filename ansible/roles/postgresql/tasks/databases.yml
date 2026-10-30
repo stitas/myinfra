@@ -1,0 +1,49 @@
+- name: Install PostgreSQL Python driver
+  ansible.builtin.apt:
+    name: python3-psycopg2
+    state: present
+
+- name: Read PostgreSQL administrator password
+  ansible.builtin.slurp:
+    src: /etc/postgresql/superuser-password
+  register: pg_admin_password
+  no_log: true
+
+- name: Generate application passwords
+  ansible.builtin.shell: |
+    umask 077
+    openssl rand -hex 32 > /etc/postgresql/{{ item.name }}-password
+  args:
+    creates: "/etc/postgresql/{{ item.name }}-password"
+  loop: "{{ postgresql_databases }}"
+  no_log: true
+
+- name: Read application passwords
+  ansible.builtin.slurp:
+    src: "/etc/postgresql/{{ item.name }}-password"
+  loop: "{{ postgresql_databases }}"
+  register: pg_passwords
+  no_log: true
+
+- name: Create database users
+  community.postgresql.postgresql_user:
+    name: "{{ item.item.user }}"
+    password: "{{ item.content | b64decode | trim }}"
+    login_host: 127.0.0.1
+    login_user: postgres
+    login_password: "{{ pg_admin_password.content | b64decode | trim }}"
+    login_db: postgres
+    state: present
+  loop: "{{ pg_passwords.results }}"
+  no_log: true
+
+- name: Create application databases
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.user }}"
+    login_host: 127.0.0.1
+    login_user: postgres
+    login_password: "{{ pg_admin_password.content | b64decode | trim }}"
+    state: present
+  loop: "{{ postgresql_databases }}"
+  no_log: true
