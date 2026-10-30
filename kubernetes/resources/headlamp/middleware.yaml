@@ -9,3 +9,18 @@ spec:
     secret: headlamp-basic-auth
     headerField: X-Forwarded-User
     removeHeader: true
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: headlamp-strip-identity
+  namespace: headlamp
+
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-User: ""
+      X-Forwarded-Group: ""
+      X-Forwarded-Email: ""
+      X-Forwarded-Id-Token: ""

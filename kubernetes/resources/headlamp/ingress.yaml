@@ -6,7 +6,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.middlewares: headlamp-headlamp-auth@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: headlamp-headlamp-strip-identity@kubernetescrd,headlamp-headlamp-auth@kubernetescrd
 
 spec:
   ingressClassName: traefik
