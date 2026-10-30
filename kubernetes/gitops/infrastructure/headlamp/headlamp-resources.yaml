@@ -12,7 +12,7 @@ spec:
     targetRevision: master
     path: kubernetes/resources/headlamp
     directory:
-      include: "{credentials.yaml,middleware.yaml,network-policy.yaml}"
+      include: "{credentials.yaml,middleware.yaml,network-policy.yaml,ingress.yaml}"
 
   destination:
     server: https://kubernetes.default.svc
