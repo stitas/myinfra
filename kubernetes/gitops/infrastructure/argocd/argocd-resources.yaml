@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-resources
+  namespace: argocd
+
+spec:
+  project: infrastructure
+
+  source:
+    repoURL: https://github.com/stitas/myinfra.git
+    targetRevision: master
+    path: kubernetes/resources/argocd
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

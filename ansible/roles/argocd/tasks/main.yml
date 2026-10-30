@@ -27,6 +27,9 @@
               timeout.reconciliation.jitter: "10s"
             params:
               server.insecure: true # Disable HTTPS in ArgoCD, because Traefik handles it
+            secret:
+              annotations:
+                sealedsecrets.bitnami.com/patch: "true"
 
           server:
             service:
