@@ -23,3 +23,29 @@ Run compose with:
 ```bash
 sudo docker compose up -d
 ```
+
+## VPS Infrastructure — 12-Hour Implementation Plan
+
+### Phase 1 — PostgreSQL
+
+[ ] Hour 1: Deploy PostgreSQL using Docker Compose and Ansible.
+[ ] Hour 2: Configure secure database access from Kubernetes and create database users.
+[ ] Hour 3: Set up automated PostgreSQL backups and test restoration.
+
+### Phase 2 — Applications
+
+[ ] Hour 4: Deploy Umami with PostgreSQL, Sealed Secrets and HTTPS.
+[ ] Hour 5: Deploy Copyparty with persistent storage, authentication and HTTPS.
+[ ] Hour 6: Configure media backups and verify persistence after restarts.
+
+### Phase 3 — Personal App CI/CD
+
+[ ] Hour 7: Create a reusable Helm chart for personal applications.
+[ ] Hour 8: Configure reusable GitHub Actions to build and publish images to GHCR.
+[ ] Hour 9: Configure Argo CD Image Updater, Git write-back and automatic deployment triggers.
+[ ] Hour 10: Deploy a test application and verify push-to-master automatic deployment.
+
+### Phase 4 — Production Readiness
+
+[ ] Hour 11: Configure monitoring and alerts for applications, server resources and backups.
+[ ] Hour 12: Test VPS disaster recovery and document infrastructure setup and migration procedures.
