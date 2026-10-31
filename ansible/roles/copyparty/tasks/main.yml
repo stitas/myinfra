@@ -1,0 +1,30 @@
+---
+- name: Create Copyparty group
+  ansible.builtin.group:
+    name: copyparty
+    gid: 10001
+    system: true
+    state: present
+
+- name: Create Copyparty service user
+  ansible.builtin.user:
+    name: copyparty
+    uid: 10001
+    group: copyparty
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Create Copyparty storage directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: copyparty
+    group: copyparty
+    mode: "0700"
+  loop:
+    - /srv/copyparty
+    - /srv/copyparty/public
+    - /srv/copyparty/private
+    - /srv/copyparty/state

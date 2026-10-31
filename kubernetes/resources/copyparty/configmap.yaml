@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: copyparty-config
+  namespace: app-copyparty
+data:
+  copyparty.conf: |
+    [global]
+      p: 3923
+      usernames
+      e2dsa
+      e2ts
+      hist: /cfg/hists/
+      xff-src: 10.42.0.0/16
+      xff-hdr: x-forwarded-for
+      rproxy: -1
+
+    [/]
+      /w/public
+      accs:
+        g: *
+        rwmda: admin
+
+    [/private]
+      /w/private
+      accs:
+        rwmda: admin

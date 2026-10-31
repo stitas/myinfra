@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: copyparty
+  namespace: app-copyparty
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: copyparty
+
+  template:
+    metadata:
+      labels:
+        app: copyparty
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+
+      containers:
+        - name: copyparty
+          image: ghcr.io/9001/copyparty-ac:1.20.26
+          workingDir: /cfg
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          ports:
+            - name: http
+              containerPort: 3923
+
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: public
+              mountPath: /w/public
+
+            - name: private
+              mountPath: /w/private
+
+            - name: state
+              mountPath: /cfg
+
+            - name: configuration
+              mountPath: /cfg/copyparty.conf
+              subPath: copyparty.conf
+              readOnly: true
+
+            - name: accounts
+              mountPath: /cfg/accounts.conf
+              subPath: accounts.conf
+              readOnly: true
+
+      volumes:
+        - name: public
+          hostPath:
+            path: /srv/copyparty/public
+            type: Directory
+
+        - name: private
+          hostPath:
+            path: /srv/copyparty/private
+            type: Directory
+
+        - name: state
+          hostPath:
+            path: /srv/copyparty/state
+            type: Directory
+
+        - name: configuration
+          configMap:
+            name: copyparty-config
+
+        - name: accounts
+          secret:
+            secretName: copyparty-accounts

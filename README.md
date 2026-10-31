@@ -24,13 +24,11 @@ Run compose with:
 sudo docker compose up -d
 ```
 
+## TODO
+
+check why TASK [argocd : Bootstrap Argo CD projects] is always changing
+
 ## VPS Infrastructure — 12-Hour Implementation Plan
-
-### Phase 1 — PostgreSQL
-
-[ ] Hour 1: Deploy PostgreSQL using Docker Compose and Ansible.
-[ ] Hour 2: Configure secure database access from Kubernetes and create database users.
-[ ] Hour 3: Set up automated PostgreSQL backups and test restoration.
 
 ### Phase 2 — Applications
 

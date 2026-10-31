@@ -28,3 +28,7 @@
     - name: Configure backups
       ansible.builtin.import_role:
         name: backup
+
+    - name: Configure copyparty
+      ansible.builtin.import_role:
+        name: copyparty
