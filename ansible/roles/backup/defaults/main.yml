@@ -5,8 +5,8 @@ backup_local_repository: /srv/backups/restic
 backup_b2_enabled: true
 backup_b2_repository: "s3:https://s3.eu-central-003.backblazeb2.com/meka-backups"
 
-backup_media_enabled: false
-backup_media_path: /srv/copyparty/files
+backup_media_enabled: true
+backup_media_path: /srv/copyparty
 
 # Daily at 03:00 VPS local time (add a small random delay).
 backup_schedule: "*-*-* 03:00:00"
