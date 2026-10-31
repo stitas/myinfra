@@ -58,12 +58,43 @@
       crd/applications.argoproj.io
   changed_when: false
 
-- name: Bootstrap Argo CD projects
+- name: Check existing Argo CD projects
+  ansible.builtin.command:
+    argv:
+      - k3s
+      - kubectl
+      - get
+      - appprojects.argoproj.io
+      - --namespace=argocd
+      - -o
+      - json
+  register: argocd_existing_projects
+  changed_when: false
+
+- name: Bootstrap missing Argo CD projects
   ansible.builtin.command:
     cmd: k3s kubectl apply -f -
-    stdin: "{{ lookup('file', playbook_dir ~ '/../../kubernetes/gitops/projects.yaml') }}"
+    stdin: "{{ item | to_json }}"
+  loop: >-
+    {{
+      lookup(
+        'file',
+        playbook_dir ~ '/../../kubernetes/gitops/projects.yaml'
+      )
+      | from_yaml_all
+      | select('mapping')
+      | list
+    }}
+  loop_control:
+    label: "{{ item.metadata.name }}"
+  when: >-
+    item.metadata.name not in (
+      (argocd_existing_projects.stdout | from_json)['items']
+      | map(attribute='metadata.name')
+      | list
+    )
   register: argocd_projects_apply
-  changed_when: >
+  changed_when: >-
     'created' in argocd_projects_apply.stdout or
     'configured' in argocd_projects_apply.stdout
 
