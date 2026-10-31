@@ -23,7 +23,10 @@
     owner: root
     group: root
     mode: "0644"
-  notify: Restart k3s
+  notify:
+    - Restart k3s
+    - Restart CoreDNS
+    - Wait for CoreDNS
 
 - name: Configure K3s resolver file
   ansible.builtin.copy:
@@ -33,7 +36,10 @@
     owner: root
     group: root
     mode: "0644"
-  notify: Restart k3s
+  notify:
+    - Restart k3s
+    - Restart CoreDNS
+    - Wait for CoreDNS
 
 - name: Install K3s server
   ansible.builtin.command:

@@ -2,3 +2,29 @@
   ansible.builtin.systemd_service:
     name: k3s
     state: restarted
+
+- name: Restart CoreDNS
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - rollout
+      - restart
+      - deployment/coredns
+      - --namespace=kube-system
+  register: k3s_coredns_restart
+  until: k3s_coredns_restart.rc == 0
+  retries: 12
+  delay: 5
+
+- name: Wait for CoreDNS
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - rollout
+      - status
+      - deployment/coredns
+      - --namespace=kube-system
+      - --timeout=120s
+  changed_when: false
