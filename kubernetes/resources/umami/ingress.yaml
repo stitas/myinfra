@@ -10,7 +10,7 @@ spec:
   ingressClassName: traefik
 
   rules:
-    - host: stats.stitas.dev
+    - host: umami.stitas.dev
       http:
         paths:
           - path: /
@@ -23,5 +23,5 @@ spec:
 
   tls:
     - hosts:
-        - stats.stitas.dev
+        - umami.stitas.dev
       secretName: umami-tls
