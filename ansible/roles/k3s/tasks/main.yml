@@ -5,6 +5,36 @@
     dest: /usr/local/src/install-k3s.sh
     mode: "0700"
 
+- name: Create K3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure K3s DNS resolvers
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/resolv.conf
+    content: |
+      {% for nameserver in k3s_dns_servers %}
+      nameserver {{ nameserver }}
+      {% endfor %}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart k3s
+
+- name: Configure K3s resolver file
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      resolv-conf: /etc/rancher/k3s/resolv.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart k3s
+
 - name: Install K3s server
   ansible.builtin.command:
     cmd: /usr/local/src/install-k3s.sh
