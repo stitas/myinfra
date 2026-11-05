@@ -1,7 +1,7 @@
 [Unit]
-Description=Back up PostgreSQL and media to local Restic and B2
+Description=Back up databases, sealing keys and media
 Wants=network-online.target
-After=network-online.target docker.service
+After=network-online.target docker.service k3s.service
 
 [Service]
 Type=oneshot

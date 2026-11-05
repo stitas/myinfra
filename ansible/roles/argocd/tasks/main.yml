@@ -53,9 +53,13 @@
     cmd: >
       k3s kubectl wait
       --for=condition=Established
-      --timeout=300s
+      --timeout=10s
       crd/appprojects.argoproj.io
       crd/applications.argoproj.io
+  register: argocd_crds_ready
+  until: argocd_crds_ready.rc == 0
+  retries: 60
+  delay: 5
   changed_when: false
 
 - name: Check existing Argo CD projects

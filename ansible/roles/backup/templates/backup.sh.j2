@@ -8,13 +8,16 @@ B2_ENABLED={{ backup_b2_enabled | ternary('true', 'false') }}
 B2_REPO={{ backup_b2_repository | quote }}
 MEDIA_ENABLED={{ backup_media_enabled | ternary('true', 'false') }}
 MEDIA_PATH={{ backup_media_path | quote }}
+KEY_NAMESPACE={{ backup_sealing_key_namespace | quote }}
 KEEP_DAILY={{ backup_keep_daily }}
 KEEP_WEEKLY={{ backup_keep_weekly }}
 KEEP_MONTHLY={{ backup_keep_monthly }}
 
 export RESTIC_PASSWORD_FILE=/etc/backup/restic-password
 STAGING_DIR=/var/lib/backup/staging
-DUMP="$STAGING_DIR/postgresql.sql"
+RUN_DIR="$STAGING_DIR/current"
+DUMP="$RUN_DIR/postgresql.sql"
+KEYS="$RUN_DIR/sealed-secrets.json"
 
 # Prevent overlapping runs (timer/manual).
 exec 9>/run/lock/backup.lock
@@ -23,24 +26,61 @@ if ! flock -n 9; then
   exit 1
 fi
 
-mkdir -p "$STAGING_DIR"
-TMP=$(mktemp "$DUMP.tmp.XXXXXXXX")
-# Do not leave a plaintext database dump on disk after the job.
-trap 'rm -f -- "$TMP" "$DUMP"' EXIT
+install -d -m 0700 "$STAGING_DIR"
+# A stable path keeps Restic's default path-based retention grouping stable.
+# The lock makes removing remnants of a killed previous run safe.
+rm -rf -- "$RUN_DIR"
+mkdir -m 0700 "$RUN_DIR"
+trap 'rm -rf -- "$RUN_DIR"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+echo "[$(date -Is)] Exporting all retained Sealed Secrets controller keys"
+if ! /usr/local/bin/k3s kubectl get secrets \
+    --namespace="$KEY_NAMESPACE" \
+    --selector=sealedsecrets.bitnami.com/sealed-secrets-key \
+    -o json > "$KEYS"; then
+  echo "ERROR: Key export failed; no repositories or retention will be updated" >&2
+  exit 1
+fi
+
+# Sanity check only; keep all keys and strip metadata tied to the old cluster.
+if ! python3 - "$KEYS" "$KEY_NAMESPACE" <<'PY'
+import json, sys
+try:
+    with open(sys.argv[1]) as source:
+        items = json.load(source)["items"]
+    if not isinstance(items, list) or not items:
+        raise ValueError()
+    for secret in items:
+        metadata, data = secret["metadata"], secret["data"]
+        if (secret["kind"] != "Secret" or not metadata["name"]
+                or metadata["namespace"] != sys.argv[2]
+                or not all(isinstance(data.get(k), str) and data[k] for k in ("tls.key", "tls.crt"))):
+            raise ValueError()
+        secret["metadata"] = {k: metadata[k] for k in ("name", "namespace", "labels", "annotations") if k in metadata}
+        secret["metadata"].get("annotations", {}).pop("kubectl.kubernetes.io/last-applied-configuration", None)
+    with open(sys.argv[1], "w") as target:
+        json.dump({"apiVersion": "v1", "kind": "List", "items": items}, target)
+except (ValueError, KeyError, TypeError, AttributeError, OSError):
+    sys.exit("ERROR: Sealing-key export is empty or malformed; no repositories will be updated")
+PY
+then
+  exit 1
+fi
 
 echo "[$(date -Is)] Exporting all PostgreSQL databases and roles"
 if ! docker compose -f /opt/postgresql/compose.yaml exec -T postgres \
-  pg_dumpall -U postgres > "$TMP"; then
+  pg_dumpall -U postgres > "$DUMP"; then
   echo "ERROR: PostgreSQL dump failed; no repositories will be updated" >&2
   exit 1
 fi
-if [[ ! -s "$TMP" ]]; then
+if [[ ! -s "$DUMP" ]]; then
   echo "ERROR: PostgreSQL dump is empty" >&2
   exit 1
 fi
-mv -f -- "$TMP" "$DUMP"
-
-sources=("$DUMP")
+sources=("$DUMP" "$KEYS")
 if [[ "$MEDIA_ENABLED" == true ]]; then
   if [[ ! -d "$MEDIA_PATH" ]]; then
     echo "ERROR: Configured media directory does not exist: $MEDIA_PATH" >&2
@@ -52,11 +92,12 @@ fi
 backup_to() {
   local name="$1" repo="$2"
   echo "[$(date -Is)] Backing up to $name"
-  if ! restic -r "$repo" backup "${sources[@]}"; then
+  if ! /usr/local/bin/restic -r "$repo" backup "${sources[@]}"; then
     echo "ERROR: Backup to $name failed" >&2
     return 1
   fi
-  if ! restic -r "$repo" forget \
+  if ! /usr/local/bin/restic -r "$repo" forget \
+      --keep-tag recovery-hold \
       --keep-daily "$KEEP_DAILY" \
       --keep-weekly "$KEEP_WEEKLY" \
       --keep-monthly "$KEEP_MONTHLY" \

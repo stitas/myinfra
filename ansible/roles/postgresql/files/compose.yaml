@@ -9,11 +9,8 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: postgres
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      # Ansible supplies POSTGRES_PASSWORD through a Compose override
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
-
-    secrets:
-      - postgres_password
 
     volumes:
       - /srv/postgresql/data:/var/lib/postgresql
@@ -28,7 +25,3 @@ services:
     ports:
       - "127.0.0.1:5432:5432" # For DBeaver SSH tunnel
       - "172.17.0.1:5432:5432" # For access from Kubernetes
-
-secrets:
-  postgres_password:
-    file: /etc/postgresql/superuser-password

@@ -1,0 +1,16 @@
+---
+- name: Install unattended upgrades
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+
+- name: Configure daily APT updates without automatic reboots
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/99-meka-updates
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      Unattended-Upgrade::Automatic-Reboot "false";

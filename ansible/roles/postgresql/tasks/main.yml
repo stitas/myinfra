@@ -1,7 +1,15 @@
-- name: Install OpenSSL
-  ansible.builtin.apt:
-    name: openssl
-    state: present
+- name: Require PostgreSQL passwords from Vault
+  ansible.builtin.assert:
+    that:
+      - postgresql_superuser_password | default('') | length > 0
+      - postgresql_passwords is defined
+  no_log: true
+
+- name: Require a Vault password for each application user
+  ansible.builtin.assert:
+    that: postgresql_passwords[item.user] | default('') | length > 0
+  loop: "{{ postgresql_databases }}"
+  no_log: true
 
 - name: Create PostgreSQL directories
   ansible.builtin.file:
@@ -13,8 +21,6 @@
   loop:
     - path: /opt/postgresql
       mode: "0755"
-    - path: /etc/postgresql
-      mode: "0700"
     - path: /srv/postgresql
       mode: "0755"
 
@@ -22,14 +28,6 @@
   ansible.builtin.file:
     path: /srv/postgresql/data
     state: directory
-
-- name: Generate PostgreSQL password if missing
-  ansible.builtin.shell: |
-    umask 077
-    openssl rand -hex 32 > /etc/postgresql/superuser-password
-  args:
-    creates: /etc/postgresql/superuser-password
-  no_log: true
 
 - name: Install PostgreSQL Compose configuration
   ansible.builtin.copy:
@@ -41,13 +39,20 @@
 
 - name: Start PostgreSQL
   ansible.builtin.command:
-    cmd: docker compose up -d --wait --wait-timeout 120
+    cmd: docker compose -f compose.yaml -f - up -d --wait --wait-timeout 120
     chdir: /opt/postgresql
+    # Compose merges stdin; escape $ so password text is not treated as interpolation.
+    stdin: >-
+      {{ {'services': {'postgres': {'environment':
+        {'POSTGRES_PASSWORD': postgresql_superuser_password | replace('$', '$$')}
+      }}} | to_json }}
   register: postgres_compose
   changed_when: >
     'Created' in postgres_compose.stderr or
     'Recreated' in postgres_compose.stderr or
     'Started' in postgres_compose.stderr
+  no_log: true
 
 - name: Provision application databases
   ansible.builtin.import_tasks: databases.yml
+  when: not infra_recovery_mode | default(false) | bool

@@ -16,6 +16,12 @@ spec:
     namespace: database
 
   syncPolicy:
+    retry:
+      limit: 20
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 1m
     automated:
       prune: true
       selfHeal: true

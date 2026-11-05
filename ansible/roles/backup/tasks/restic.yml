@@ -1,0 +1,72 @@
+---
+- name: Require a supported Restic architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == 'Linux'
+      - ansible_facts['architecture'] in backup_restic_architectures
+    fail_msg: Pinned Restic supports Linux x86_64 and aarch64 only.
+
+- name: Select Restic release architecture
+  ansible.builtin.set_fact:
+    backup_restic_arch: "{{ backup_restic_architectures[ansible_facts['architecture']] }}"
+
+- name: Inspect managed Restic executable
+  ansible.builtin.stat:
+    path: /usr/local/bin/restic
+  register: backup_restic_binary
+
+- name: Read installed Restic version
+  ansible.builtin.command: /usr/local/bin/restic version
+  register: backup_restic_installed
+  changed_when: false
+  when: backup_restic_binary.stat.exists
+
+- name: Install Restic when the managed version differs
+  when: >-
+    not backup_restic_binary.stat.exists or
+    backup_restic_installed.stdout.split()[1] != backup_restic_version
+  block:
+    - name: Download pinned Restic archive
+      ansible.builtin.get_url:
+        url: >-
+          https://github.com/restic/restic/releases/download/v{{ backup_restic_version }}/restic_{{ backup_restic_version }}_linux_{{ backup_restic_arch }}.bz2
+        dest: "/usr/local/src/restic-{{ backup_restic_version }}-{{ backup_restic_arch }}.bz2"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Install Restic executable atomically
+      ansible.builtin.shell: |
+        set -euo pipefail
+        temporary=$(mktemp /usr/local/bin/.restic.XXXXXXXX)
+        trap 'rm -f -- "$temporary"' EXIT
+        bzip2 -dc {{ ('/usr/local/src/restic-' ~ backup_restic_version ~ '-' ~ backup_restic_arch ~ '.bz2') | quote }} > "$temporary"
+        chmod 0755 "$temporary"
+        "$temporary" version
+        mv -f -- "$temporary" /usr/local/bin/restic
+      args:
+        executable: /bin/bash
+
+- name: Verify pinned Restic version
+  ansible.builtin.command: /usr/local/bin/restic version
+  register: backup_restic_verified
+  changed_when: false
+  failed_when: backup_restic_verified.stdout.split()[1] != backup_restic_version
+
+- name: Old installer cleanup
+  block:
+    - name: Find old Restic archives
+      ansible.builtin.find:
+        paths: /usr/local/src
+        patterns: restic-*.bz2
+        excludes: "restic-{{ backup_restic_version }}-{{ backup_restic_arch }}.bz2"
+        file_type: file
+      register: backup_restic_old_archives
+
+    - name: Remove old Restic archives
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ backup_restic_old_archives.files }}"
+      loop_control:
+        label: "{{ item.path }}"

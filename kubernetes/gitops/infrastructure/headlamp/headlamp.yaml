@@ -31,9 +31,6 @@ spec:
         serviceAccount:
           create: true
           name: headlamp
-        
-        clusterRoleBinding:
-          create: false
 
   destination:
     server: https://kubernetes.default.svc

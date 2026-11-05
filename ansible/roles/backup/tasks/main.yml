@@ -2,11 +2,14 @@
 - name: Install backup dependencies
   ansible.builtin.apt:
     name:
-      - restic
-      - openssl
       - util-linux
+      - python3
+      - bzip2
     state: present
     update_cache: false
+
+- name: Install pinned Restic release
+  ansible.builtin.import_tasks: restic.yml
 
 - name: Create protected backup directories
   ansible.builtin.file:
@@ -20,7 +23,7 @@
     - /srv/backups
     - /var/lib/backup/staging
 
-- name: Install Restic encryption password
+- name: Install Restic encryption password from Vault
   ansible.builtin.copy:
     content: "{{ backup_restic_password }}\n"
     dest: /etc/backup/restic-password
@@ -50,7 +53,7 @@
 - name: Initialize local Restic repository once
   ansible.builtin.command:
     argv:
-      - restic
+      - /usr/local/bin/restic
       - -r
       - "{{ backup_local_repository }}"
       - init
@@ -65,7 +68,7 @@
     source /etc/backup/b2.env
     set +a
 
-    restic -r {{ backup_b2_repository | quote }} cat config >/dev/null
+    /usr/local/bin/restic -r {{ backup_b2_repository | quote }} cat config >/dev/null
   args:
     executable: /bin/bash
   environment:
@@ -83,7 +86,7 @@
     source /etc/backup/b2.env
     set +a
 
-    restic -r {{ backup_b2_repository | quote }} init
+    /usr/local/bin/restic -r {{ backup_b2_repository | quote }} init
   args:
     executable: /bin/bash
   environment:

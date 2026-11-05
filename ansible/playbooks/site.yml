@@ -3,12 +3,20 @@
   hosts: vps
   become: true
 
+  vars:
+    infra_recovery_mode: false
+
   tasks:
     - name: Harden SSH
       ansible.builtin.import_role:
         name: security
         tasks_from: ssh
     
+    - name: Configure automatic APT updates
+      ansible.builtin.import_role:
+        name: security
+        tasks_from: updates
+
     - name: Configure Docker repository
       ansible.builtin.import_role:
         name: docker
@@ -17,18 +25,23 @@
       ansible.builtin.import_role:
         name: k3s
 
-    - name: Install ArgoCD
-      ansible.builtin.import_role:
-        name: argocd
+    - name: Apply pending Kubernetes DNS changes before dependent roles
+      ansible.builtin.meta: flush_handlers
 
     - name: Configure PostgreSQL
       ansible.builtin.import_role:
         name: postgresql
 
-    - name: Configure backups
-      ansible.builtin.import_role:
-        name: backup
-
     - name: Configure copyparty
       ansible.builtin.import_role:
         name: copyparty
+
+    - name: Install ArgoCD
+      ansible.builtin.import_role:
+        name: argocd
+      when: not infra_recovery_mode | bool
+
+    - name: Configure backups
+      ansible.builtin.import_role:
+        name: backup
+      when: not infra_recovery_mode | bool

@@ -15,6 +15,9 @@ spec:
 
   template:
     metadata:
+      annotations:
+        # Increment with umami-secrets changes; environment values need a new pod.
+        infra.stitas.dev/config-revision: "1"
       labels:
         app: umami
     spec:

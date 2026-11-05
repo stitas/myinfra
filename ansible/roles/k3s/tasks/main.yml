@@ -1,9 +1,32 @@
 ---
-- name: Download K3s installer
+- name: Require a supported K3s architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['system'] == 'Linux'
+      - ansible_facts['architecture'] in ['x86_64', 'aarch64']
+    fail_msg: This repository supports K3s on Linux x86_64 and aarch64 only.
+
+- name: Inspect installed K3s executable
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Read installed K3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_installed
+  changed_when: false
+  when: k3s_binary.stat.exists
+
+- name: Record installed K3s version
+  ansible.builtin.set_fact:
+    k3s_installed_version: "{{ k3s_installed.stdout.split()[2] if k3s_binary.stat.exists else '' }}"
+
+- name: Download pinned K3s installer
   ansible.builtin.get_url:
-    url: https://get.k3s.io
-    dest: /usr/local/src/install-k3s.sh
+    url: "https://raw.githubusercontent.com/k3s-io/k3s/{{ k3s_version }}/install.sh"
+    dest: "/usr/local/src/install-k3s-{{ k3s_version }}.sh"
     mode: "0700"
+  when: k3s_installed_version != k3s_version
 
 - name: Create K3s configuration directory
   ansible.builtin.file:
@@ -36,17 +59,45 @@
     owner: root
     group: root
     mode: "0644"
-  notify:
+  notify: # Ansible deduplicates pending handler notifications. If both tasks change, each handler still runs only once when flush_handlers executes
     - Restart k3s
     - Restart CoreDNS
     - Wait for CoreDNS
 
 - name: Install K3s server
   ansible.builtin.command:
-    cmd: /usr/local/src/install-k3s.sh
-    creates: /usr/local/bin/k3s
+    argv:
+      - "/usr/local/src/install-k3s-{{ k3s_version }}.sh"
   environment:
     INSTALL_K3S_EXEC: server
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  when: k3s_installed_version != k3s_version
+
+- name: Verify installed K3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_verified
+  changed_when: false
+  failed_when: k3s_verified.stdout.split()[2] != k3s_version
+
+- name: Old installer cleanup
+  block:
+    - name: Find old K3s installers
+      ansible.builtin.find:
+        paths: /usr/local/src
+        patterns:
+          - install-k3s-*.sh
+          - install-k3s.sh
+        excludes: "install-k3s-{{ k3s_version }}.sh"
+        file_type: file
+      register: k3s_old_installers
+
+    - name: Remove old K3s installers
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ k3s_old_installers.files }}"
+      loop_control:
+        label: "{{ item.path }}"
 
 - name: Enable and start K3s
   ansible.builtin.systemd_service:

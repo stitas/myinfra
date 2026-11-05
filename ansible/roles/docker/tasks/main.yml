@@ -1,4 +1,9 @@
 ---
+- name: Require the Ubuntu distribution expected by this Docker repository
+  ansible.builtin.assert:
+    that: ansible_facts['distribution'] == 'Ubuntu'
+    fail_msg: This role uses Docker's Ubuntu repository; other distributions are unsupported.
+
 - name: Install Docker repository dependencies
   ansible.builtin.apt:
     name:

@@ -1,0 +1,123 @@
+---
+- name: Prepare the replacement without applications or backups
+  ansible.builtin.import_playbook: site.yml
+  vars:
+    infra_recovery_mode: true
+
+- name: Restore data from B2
+  hosts: vps
+  become: true
+  vars:
+    recovery_snapshot: latest
+    recovery_dump_directory: "{{ recovery_temporary.path }}/data/var/lib/backup/staging/current"
+
+  tasks:
+    - name: Install Restic extraction dependency
+      ansible.builtin.apt:
+        name: bzip2
+        state: present
+
+    - name: Install Restic without configuring scheduled backups
+      ansible.builtin.import_role:
+        name: backup
+        tasks_from: restic
+
+    - name: Create protected temporary recovery directory
+      ansible.builtin.tempfile:
+        state: directory
+        path: /root
+        prefix: myinfra-recovery-
+      register: recovery_temporary
+
+    - name: Restore keys, databases and uploads
+      block:
+        - name: Check B2 repository and restore the selected snapshot
+          # Pass secrets over stdin; Ansible's environment option puts values in
+          # its remote shell command. Python supplies Restic's environment instead.
+          ansible.builtin.command:
+            argv:
+              - python3
+              - -c
+              - |
+                import json, os, subprocess, sys
+                environment = os.environ.copy()
+                # Use the Vault password even if another source was inherited.
+                environment.pop("RESTIC_PASSWORD_FILE", None)
+                environment.pop("RESTIC_PASSWORD_COMMAND", None)
+                environment.update(json.load(sys.stdin))
+                restic = ["/usr/local/bin/restic", "-r", sys.argv[1]]
+                subprocess.run(restic + ["check"], env=environment, check=True)
+                subprocess.run(restic + ["restore", sys.argv[2], "--target", sys.argv[3], "--verify"],
+                               env=environment, check=True)
+              - "{{ backup_b2_repository }}"
+              - "{{ recovery_snapshot }}"
+              - "{{ recovery_temporary.path }}/data"
+            stdin: >-
+              {{ {'RESTIC_PASSWORD': backup_restic_password,
+                  'AWS_ACCESS_KEY_ID': backup_b2_key_id,
+                  'AWS_SECRET_ACCESS_KEY': backup_b2_application_key} | to_json }}
+          no_log: true
+
+        - name: Restore Sealed Secrets keys before installing the controller
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/k3s
+              - kubectl
+              - apply
+              - --server-side
+              - --field-manager=myinfra-recovery
+              - -f
+              - "{{ recovery_dump_directory }}/sealed-secrets.json"
+          no_log: true
+
+        - name: Restore PostgreSQL roles and databases
+          ansible.builtin.shell: |
+            set -euo pipefail
+            # The fresh container already has postgres so `sed '/^CREATE ROLE postgres;$/d'` removes the command to avoid errors
+            sed '/^CREATE ROLE postgres;$/d' {{ (recovery_dump_directory ~ '/postgresql.sql') | quote }} |
+              docker compose -f /opt/postgresql/compose.yaml exec -T postgres \
+                psql -X --set ON_ERROR_STOP=on -U postgres -d postgres
+          args:
+            executable: /bin/bash
+          no_log: true
+
+        - name: Restore Copyparty uploads and local document history
+          ansible.builtin.command:
+            argv:
+              - cp
+              - -a
+              - "{{ recovery_temporary.path }}/data{{ backup_media_path }}/{{ item }}/."
+              - "{{ backup_media_path }}/{{ item }}/"
+          loop:
+            - public
+            - private
+          when: backup_media_enabled | bool
+
+        - name: Restore Copyparty ownership
+          ansible.builtin.file:
+            path: "{{ backup_media_path }}"
+            owner: copyparty
+            group: copyparty
+            recurse: true
+          when: backup_media_enabled | bool
+
+        - name: Protect Copyparty storage directories
+          ansible.builtin.file:
+            path: "{{ backup_media_path }}/{{ item }}"
+            state: directory
+            mode: "0700"
+          loop:
+            - ""
+            - public
+            - private
+            - state
+          when: backup_media_enabled | bool
+
+      always:
+        - name: Remove temporary recovery data
+          ansible.builtin.file:
+            path: "{{ recovery_temporary.path }}"
+            state: absent
+
+- name: Enable applications and backups after restoration succeeds
+  ansible.builtin.import_playbook: site.yml
