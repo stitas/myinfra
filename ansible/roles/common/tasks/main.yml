@@ -4,11 +4,13 @@
     update_cache: true
     cache_valid_time: 3600
 
+# Can take longer on a fresh VPS
+- name: Upgrade installed packages
+  ansible.builtin.apt:
+    upgrade: safe
+
 - name: Install essential packages
   ansible.builtin.apt:
     name:
-      - git
       - curl
-      - htop
-      - unzip
     state: present
