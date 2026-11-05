@@ -202,22 +202,18 @@ steps in order:
 | Copyparty files | Restores public/private uploads and local `.hist` history, sets ownership and directory permissions, and leaves runtime state fresh. |
 | Normal provisioning | Runs `site.yml` normally after successful restoration to configure application databases, Argo CD and backups. Argo CD syncs asynchronously. |
 
-## Versions and maintenance
+ArgoCD dashboard password is not restored automatically. It generates random password when newly creating ArgoCD. It should be retrieved with this command and replaced after logging in:
 
-Ansible manages these settings in `/etc/apt/apt.conf.d/99-meka-updates`:
-
-```text
-APT::Periodic::Update-Package-Lists "1";
-APT::Periodic::Unattended-Upgrade "1";
-Unattended-Upgrade::Automatic-Reboot "false";
+```bash
+k3s kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 --decode && printf '\n'
 ```
 
-Unattended upgrades do not reboot the VPS. Reboot manually when required; package
-updates can still restart individual services.
+## Versions and maintenance
 
 These are repository pins, not live installed versions. Changing a pin can update
 installed software on provisioning/sync.
-Docker/Compose packages follow the Docker APT repository; Traefik/CoreDNS follow K3s.
+Docker/Compose packages follow the Docker APT repository. Traefik/CoreDNS follow K3s.
 After installed-version verification succeeds, provisioning removes old K3s installers
 and Restic archives from `/usr/local/src`, keeping the current version's artifact.
 
@@ -243,6 +239,18 @@ sudo apt upgrade
 ```
 ```bash
 sudo apt autoremove
+```
+
+Automatic security patches are enabled:
+```
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+Unattended-Upgrade::Automatic-Reboot "false";
+```
+
+Check if reboot needed with:
+```bash
+cat /var/run/reboot-required
 ```
 
 Record in the relevant Git change:
@@ -288,3 +296,8 @@ ansible-playbook --syntax-check playbooks/site.yml
 ansible-playbook --syntax-check playbooks/site.yml -e infra_recovery_mode=true
 ansible-playbook --syntax-check playbooks/recover.yml
 ```
+
+## TODO
+
+- add instruction how to seal passwords to readme
+- implement git ops for personal repo and document in readme
