@@ -112,3 +112,6 @@
     owner: root
     group: root
     mode: "0644"
+
+- name: Install pinned kubeseal client
+  ansible.builtin.import_tasks: kubeseal.yml

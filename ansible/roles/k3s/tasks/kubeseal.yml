@@ -1,0 +1,72 @@
+---
+- name: Select kubeseal release architecture
+  ansible.builtin.set_fact:
+    kubeseal_arch: "{{ kubeseal_architectures[ansible_facts['architecture']] }}"
+
+- name: Inspect managed kubeseal executable
+  ansible.builtin.stat:
+    path: /usr/local/bin/kubeseal
+  register: kubeseal_binary
+
+- name: Read installed kubeseal version
+  ansible.builtin.command: /usr/local/bin/kubeseal --version
+  register: kubeseal_installed
+  changed_when: false
+  when: kubeseal_binary.stat.exists
+
+- name: Install kubeseal when the managed version differs
+  when: >-
+    not kubeseal_binary.stat.exists or
+    kubeseal_installed.stdout.split()[-1] != kubeseal_version
+  block:
+    - name: Install kubeseal archive dependencies
+      ansible.builtin.apt:
+        name:
+          - tar
+          - gzip
+        state: present
+
+    - name: Download pinned kubeseal archive
+      ansible.builtin.get_url:
+        url: >-
+          https://github.com/bitnami/sealed-secrets/releases/download/v{{ kubeseal_version }}/kubeseal-{{ kubeseal_version }}-linux-{{ kubeseal_arch }}.tar.gz
+        dest: "/usr/local/src/kubeseal-{{ kubeseal_version }}-linux-{{ kubeseal_arch }}.tar.gz"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Install kubeseal executable atomically
+      ansible.builtin.shell: |
+        set -euo pipefail
+        temporary=$(mktemp /usr/local/bin/.kubeseal.XXXXXXXX)
+        trap 'rm -f -- "$temporary"' EXIT
+        tar -xOzf {{ ('/usr/local/src/kubeseal-' ~ kubeseal_version ~ '-linux-' ~ kubeseal_arch ~ '.tar.gz') | quote }} kubeseal > "$temporary"
+        chmod 0755 "$temporary"
+        test "$("$temporary" --version)" = {{ ('kubeseal version: ' ~ kubeseal_version) | quote }}
+        mv -f -- "$temporary" /usr/local/bin/kubeseal
+      args:
+        executable: /bin/bash
+
+- name: Verify pinned kubeseal version
+  ansible.builtin.command: /usr/local/bin/kubeseal --version
+  register: kubeseal_verified
+  changed_when: false
+  failed_when: kubeseal_verified.stdout.split()[-1] != kubeseal_version
+
+- name: Old kubeseal installer cleanup
+  block:
+    - name: Find old kubeseal archives
+      ansible.builtin.find:
+        paths: /usr/local/src
+        patterns: kubeseal-*.tar.gz
+        excludes: "kubeseal-{{ kubeseal_version }}-linux-{{ kubeseal_arch }}.tar.gz"
+        file_type: file
+      register: kubeseal_old_archives
+
+    - name: Remove old kubeseal archives
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ kubeseal_old_archives.files }}"
+      loop_control:
+        label: "{{ item.path }}"

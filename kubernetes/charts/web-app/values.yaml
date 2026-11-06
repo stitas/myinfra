@@ -1,0 +1,20 @@
+image: ""
+containerPort: 3000
+readinessPath: /
+sealedImagePullSecret: {}
+
+# Non-secret environment variables.
+config: {}
+
+# Ciphertext sealed for <release>-secrets in the app namespace.
+sealedSecrets: {}
+
+resources: {}
+securityContext: {}
+volumes: []
+volumeMounts: []
+podAnnotations: {}
+
+# Set a hostname to create an HTTPS Ingress.
+ingress:
+  host: ""

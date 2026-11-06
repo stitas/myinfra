@@ -72,7 +72,7 @@ in order:
 | SSH hardening | Disables root and password login, validates the SSH configuration and reloads SSH when changed. |
 | Automatic APT updates | Installs `unattended-upgrades`, enables daily package-list refreshes and unattended upgrades, and disables automatic reboots. |
 | Docker | Configures Docker's Ubuntu repository, installs Engine/Compose, limits container logs and starts Docker. |
-| K3s | Installs the pinned version when needed, configures DNS, verifies the version, removes old installers and writes the external PostgreSQL EndpointSlice. |
+| K3s | Installs pinned K3s and kubeseal when needed, configures DNS, verifies versions, removes old installers and writes the external PostgreSQL EndpointSlice. |
 | Pending DNS handlers | Applies queued K3s/CoreDNS restarts and waits for CoreDNS before continuing. Unchanged configuration queues no restart. |
 | PostgreSQL | Starts the Compose container using Vault credentials, then creates application users and databases. |
 | Copyparty directories | Creates UID/GID 10001 and the protected public, private and runtime-state directories. Argo CD deploys the application later. |
@@ -144,6 +144,22 @@ This annotation has no numerical meaning. It is a manual Git-controlled
 restart mechanism, not automatic configuration detection. An image change already
 changes the Pod template.
 
+## Secret sealing
+
+Run from VPS to seal value in env file:
+
+```bash
+sudo k3s kubectl create secret generic {{ SECRET_NAME }} \
+  --namespace {{ APP_NAMESPACE }} \
+  --from-env-file="{{ PATH_TO_ENV_FILE }}" \
+  --dry-run=client \
+  -o yaml |
+  sudo kubeseal \
+    --kubeconfig /etc/rancher/k3s/k3s.yaml \
+    --controller-name sealed-secrets-controller \
+    --controller-namespace kube-system \
+    --format yaml
+```
 
 ## Backups
 
@@ -215,11 +231,12 @@ These are repository pins, not live installed versions. Changing a pin can updat
 installed software on provisioning/sync.
 Docker/Compose packages follow the Docker APT repository. Traefik/CoreDNS follow K3s.
 After installed-version verification succeeds, provisioning removes old K3s installers
-and Restic archives from `/usr/local/src`, keeping the current version's artifact.
+and kubeseal/Restic archives from `/usr/local/src`, keeping each current version's artifact.
 
 | Component | Repository version | Edit | Official versions | Notes |
 | --- | --- | --- | --- | --- |
 | K3s | `v1.35.9+k3s1` | `ansible/roles/k3s/defaults/main.yml` | [Releases](https://github.com/k3s-io/k3s/releases) | Bundled components follow K3s |
+| kubeseal CLI | `0.40.0` | `kubeseal_version` in `ansible/roles/k3s/defaults/main.yml` | [Releases](https://github.com/bitnami/sealed-secrets/releases) | Client version, separate from the Sealed Secrets chart; archive selected by CPU architecture |
 | Restic | `0.19.1` | `ansible/roles/backup/defaults/main.yml` | [Releases](https://github.com/restic/restic/releases) | Archive selected by CPU architecture |
 | PostgreSQL | image `18.6` | `ansible/roles/postgresql/files/compose.yaml` | [Image](https://hub.docker.com/_/postgres) | Major changes need data migration |
 | Argo CD | chart `10.11.6` (app `3.5.6`) | `ansible/roles/argocd/tasks/main.yml` | [Charts](https://github.com/argoproj/argo-helm/releases) | Edit chart version; check appVersion |

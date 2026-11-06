@@ -2,3 +2,8 @@ k3s_dns_servers:
   - "1.1.1.1"
   - "8.8.8.8"
 k3s_version: "v1.35.9+k3s1"
+
+kubeseal_version: "0.40.0"
+kubeseal_architectures:
+  x86_64: amd64
+  aarch64: arm64

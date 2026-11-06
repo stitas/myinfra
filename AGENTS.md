@@ -163,14 +163,20 @@ the final normal site run and prevent application/backup provisioning.
 - Ansible `block` groups tasks, can share directives, and supports `rescue`/`always`;
   it is not a transaction. Cleanup blocks must remain after successful version
   verification. Registered results are used by the following cleanup tasks.
-- K3s and Restic compare installed versions to pins. Same-version runs skip installing;
-  changed pins drive installation, including an older configured version. Never run
+- K3s, kubeseal and Restic compare installed versions to pins. Same-version runs skip
+  installing; changed pins drive installation, including an older configured version. Never run
   normal provisioning merely as a validation command.
 - Cleanup only searches regular files directly under `/usr/local/src`. It preserves
-  `install-k3s-<configured-version>.sh` and `restic-<version>-<arch>.bz2`; it removes
-  older matching files and the legacy `install-k3s.sh` after verification succeeds.
+  `install-k3s-<configured-version>.sh`, `kubeseal-<version>-linux-<arch>.tar.gz` and
+  `restic-<version>-<arch>.bz2`; it removes older matching files and the legacy
+  `install-k3s.sh` after verification succeeds.
   It does not manage arbitrary installer files or fetch a missing retained artifact
   when installation is otherwise skipped.
+- The K3s role installs the pinned kubeseal CLI through `tasks/kubeseal.yml` for
+  amd64/arm64. It verifies a temporary executable before replacing
+  `/usr/local/bin/kubeseal`; no versioned executable copies are retained. Cleanup
+  removes old archives only after the installed version is verified. The CLI does
+  not install or upgrade the Sealed Secrets controller.
 - Docker uses the detected Ubuntu codename (`resolute` on 26.04), installs dependencies
   for `deb822_repository`, and uses Docker's upstream APT repository. No hardcoded
   Noble suite or third-party Ubuntu derivative support should be introduced.
@@ -459,6 +465,7 @@ is the live installed version. Chart versions and application versions are diffe
 | Component | Source of the pin / related edits |
 | --- | --- |
 | K3s | `ansible/roles/k3s/defaults/main.yml`; bundled Traefik/CoreDNS follow it |
+| kubeseal CLI | `kubeseal_version` in `ansible/roles/k3s/defaults/main.yml`; independent of the controller chart pin |
 | Restic | `ansible/roles/backup/defaults/main.yml`; binary installation is in `tasks/restic.yml` |
 | PostgreSQL | `ansible/roles/postgresql/files/compose.yaml`; major upgrades also affect the data-layout/recovery plan |
 | Argo CD | HelmChart embedded in `ansible/roles/argocd/tasks/main.yml` |
