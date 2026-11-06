@@ -301,3 +301,4 @@ ansible-playbook --syntax-check playbooks/recover.yml
 
 - add instruction how to seal passwords to readme
 - implement git ops for personal repo and document in readme
+- implement good logging and log viewing solution (maybe monitoring part?)

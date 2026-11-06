@@ -10,6 +10,5 @@ spec:
     app: copyparty
 
   ports:
-    - name: http
       port: 80
       targetPort: http

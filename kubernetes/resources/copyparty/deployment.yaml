@@ -16,7 +16,7 @@ spec:
   template:
     metadata:
       annotations:
-        # Increment with copyparty.conf or accounts.conf changes; never put secrets here.
+        # Increment with copyparty.conf or accounts.conf changes
         infra.stitas.dev/config-revision: "1"
       labels:
         app: copyparty
