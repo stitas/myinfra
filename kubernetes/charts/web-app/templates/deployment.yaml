@@ -48,7 +48,7 @@ spec:
             {{- end }}
             {{- if .Values.sealedSecrets }}
             - secretRef:
-                name: {{ .Release.Name }}-env
+                name: {{ .Release.Name }}-secrets
             {{- end }}
           {{- end }}
           {{- with .Values.resources }}
