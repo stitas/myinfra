@@ -286,36 +286,7 @@ rules at another provider:
 | TCP 80/443 | Public; HTTP-01 needs port 80 |
 | TCP 22 | Trusted management addresses |
 
-## Local validation
-
-Run from the repository root:
-
-```bash
-python3 scripts/validate.py
-```
-
-Requires Python 3, PyYAML, Jinja2 and Bash. It checks:
-
-- YAML syntax and duplicate keys in `.yaml`/`.yml` files, excluding `.git` and encrypted Vault files.
-- Source directories for Argo Applications referencing this repository.
-- Bash syntax after rendering the backup template with role defaults.
-
-It checks local files and does not deploy anything; it does not validate Kubernetes
-schemas or live behaviour.
-
-Other local checks:
-
-```bash
-docker compose -f ansible/roles/postgresql/files/compose.yaml config --quiet
-cd ansible
-ansible-playbook --syntax-check playbooks/bootstrap.yml
-ansible-playbook --syntax-check playbooks/site.yml
-ansible-playbook --syntax-check playbooks/site.yml -e infra_recovery_mode=true
-ansible-playbook --syntax-check playbooks/recover.yml
-```
-
 ## TODO
 
-- add instruction how to seal passwords to readme
 - implement git ops for personal repo and document in readme
 - implement good logging and log viewing solution (maybe monitoring part?)

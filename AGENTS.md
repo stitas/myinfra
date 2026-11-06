@@ -31,8 +31,7 @@ playbooks are the source of truth for implementation details.
 These are intentional choices, not missing features to add back during cleanup:
 
 - The test suite was removed at the owner's request. Do not recreate `tests/`, test
-  frameworks or historical test commands unless requested. `scripts/validate.py`
-  remains as a small local configuration checker.
+  frameworks or historical test commands unless requested.
 - No repository-managed download checksum verification for K3s or Restic. Keep explicit
   version pins, installed-version comparisons and post-install version verification.
 - No upgrade opt-in flags, downgrade/skipped-minor restrictions or version-change
@@ -78,7 +77,6 @@ local repository and Backblaze B2 through its S3 API.
 | Root GitOps Application | `kubernetes/bootstrap/gitops-manager.yaml` |
 | Projects, child Applications and Helm chart values | `kubernetes/gitops/` |
 | Actual application/infrastructure resources | `kubernetes/resources/` |
-| Local YAML/path/rendered Bash checks | `scripts/validate.py` |
 
 ## Ownership boundaries and GitOps
 
@@ -486,7 +484,6 @@ Restic binary. Do not silently perform a live upgrade to validate a pin edit.
 From the repository root:
 
 ```bash
-python3 scripts/validate.py
 docker compose -f ansible/roles/postgresql/files/compose.yaml config --quiet
 git diff --check
 ```
@@ -504,20 +501,7 @@ ansible-playbook --syntax-check playbooks/recover.yml
 normal playbook run. `--check` is not a blanket guarantee of no side effects for
 arbitrary future task changes. Validate live behavior only within the authorized scope.
 
-The validator needs Python 3, PyYAML, Jinja2 and Bash. It currently:
-
-- Parses `.yaml`/`.yml` files outside `.git`, skips encrypted Vault documents and
-  rejects duplicate mapping keys.
-- Checks that local source directories exist for single-source Argo Applications
-  pointing at this repository URL.
-- Renders the backup script using backup role defaults and checks it with `bash -n`.
-
-It does not validate Kubernetes/Helm/CRD schemas, external charts, decrypted credentials,
-embedded Python execution, authorization, network access, backups or recovery behavior.
-The backup template must render from defaults alone; its standalone renderer supplies
-only the Ansible-style `quote` and `ternary` filters. New filters or variables need
-coordinated renderer/default changes, not an assumption that a full Ansible context
-exists. Compose `config --quiet` validates the public file, not its secret override or
+Compose `config --quiet` validates the public file, not its secret override or
 database connectivity. Syntax checks do not prove the remote tasks will succeed.
 
 There is no test suite or CI workflow to invoke. Do not rely on historical test files,
