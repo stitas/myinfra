@@ -18,3 +18,5 @@ podAnnotations: {}
 # Set a hostname to create an HTTPS Ingress.
 ingress:
   host: ""
+  # List of {path, pathType} entries. Empty or omitted uses / with Prefix matching.
+  paths: []

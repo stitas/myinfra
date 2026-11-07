@@ -12,13 +12,15 @@ spec:
     - host: {{ .Values.ingress.host | quote }}
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          {{- range .Values.ingress.paths | default (list (dict "path" "/" "pathType" "Prefix")) }}
+          - path: {{ .path | quote }}
+            pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ .Release.Name }}
+                name: {{ $.Release.Name }}
                 port:
                   number: 80
+          {{- end }}
   tls:
     - hosts:
         - {{ .Values.ingress.host | quote }}

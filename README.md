@@ -161,6 +161,27 @@ sudo k3s kubectl create secret generic {{ SECRET_NAME }} \
     --format yaml
 ```
 
+Seal ghcr-pull secret:
+
+```bash
+(
+  set -euo pipefail
+
+  read -rsp "GHCR read token: " ghcr_token
+  printf '\n' >&2
+
+  auth=$(printf '%s:%s' '{{ YOUR_USERNAME }}' "$ghcr_token" | base64 -w0)
+
+  printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$auth" |
+    sudo kubeseal --raw \
+      --kubeconfig /etc/rancher/k3s/k3s.yaml \
+      --controller-name sealed-secrets-controller \
+      --controller-namespace kube-system \
+      --name ghcr-pull \
+      --namespace {{ APP_NAMESPACE }}
+)
+```
+
 ## Backups
 
 `backup.timer` runs at 03:00 VPS system time, with up to five minutes random delay. Both `/srv/backups/restic` and B2 receive:
@@ -286,12 +307,121 @@ rules at another provider:
 | TCP 80/443 | Public; HTTP-01 needs port 80 |
 | TCP 22 | Trusted management addresses |
 
-# Configure terminal
+## Configure terminal
 
 If using kitty run this command from your pc to have better UX when ssh'ed in server:
 ```bash
 infocmp -a xterm-kitty | ssh admin@your-server 'tic -x -o ~/.terminfo /dev/stdin'
 ```
+
+## Deployment of personal apps
+
+Here is an example `deploy.yml` script for you GitHub actions:
+```yml
+name: Build and deploy
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+  packages: write
+
+# Cancel old existing run when a new one starts
+concurrency:
+  group: deploy-${{ github.repository }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out app
+        uses: actions/checkout@v6
+        with:
+          path: app
+
+      - name: Build and publish to GHCR
+        id: publish
+        working-directory: app
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}"
+
+          docker build --tag "$image" .
+          echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$image"
+
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          printf 'Published image `%s`\n' "$image" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check out infrastructure
+        uses: actions/checkout@v6
+        with:
+          repository: stitas/myinfra
+          ref: master
+          path: myinfra
+          token: ${{ secrets.MYINFRA_DEPLOY_TOKEN }}
+
+      - name: Update deployment image
+        working-directory: myinfra
+        env:
+          IMAGE: ${{ steps.publish.outputs.image }}
+          VALUES_FILE: kubernetes/resources/{{PROJECT_FOLDER}}/values.yaml
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path(os.environ["VALUES_FILE"])
+          updated, count = re.subn(
+              r"^image:.*$",
+              "image: " + os.environ["IMAGE"],
+              path.read_text(),
+              flags=re.MULTILINE,
+          )
+          if count != 1:
+              raise SystemExit("Expected exactly one top-level image field")
+          path.write_text(updated)
+          PY
+
+          # Finish successfully if the image reference in myinfra is already up to date.
+          if git diff --quiet -- "$VALUES_FILE"; then
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$VALUES_FILE"
+          git commit -m "Deploy ${GITHUB_REPOSITORY,,} ${GITHUB_SHA::11}"
+
+          # 3 tries to push
+          for attempt in 1 2 3; do
+            git pull --rebase origin master
+
+            # If newer commit already exists - skip updating
+            source_head=$(git -C ../app ls-remote origin refs/heads/master | cut -f1)
+            if [ "$source_head" != "$GITHUB_SHA" ]; then
+              echo "A newer commit is on app master; skipping this deployment."
+              exit 0
+            fi
+
+            # Try to push to master
+            if git push origin HEAD:master; then
+              exit 0
+            fi
+          done
+
+          exit 1
+```
+
+Replace `PROJECT_FOLDER` placeholder with your folder name
+
+Add a `MYINFRA_DEPLOY_TOKEN` secret token to your application GitHub repository. The token should be a fine grained personal access token. It should have **Read and Write** access to code for the myinfra repo
 
 ## TODO
 

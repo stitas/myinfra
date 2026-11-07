@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kaledinissveikinimaslt-ui
+  namespace: argocd
+
+spec:
+  project: applications
+
+  source:
+    repoURL: https://github.com/stitas/myinfra.git
+    targetRevision: master
+    path: kubernetes/charts/web-app
+    helm:
+      valueFiles:
+        - /kubernetes/resources/kaledinissveikinimaslt/values-ui.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app-kaledinissveikinimaslt
+
+  syncPolicy:
+    retry:
+      limit: 20
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 1m
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

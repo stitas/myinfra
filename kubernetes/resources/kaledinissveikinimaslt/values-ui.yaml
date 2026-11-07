@@ -1,0 +1,30 @@
+image: ghcr.io/stitas/kaledinissveikinimas.lt-frontend:deb39ee9828decd4454e6151b2cae735132ca8e2
+
+imagePullSecrets:
+  - name: ghcr-pull
+
+ingress:
+  host: kaledinissveikinimas.lt
+
+config:
+  NODE_ENV=production
+  ORIGIN=https://kaledinissveikinimas.lt
+  PRIVATE_BACKEND_URL=http://kaledinissveikinimaslt
+  PUBLIC_UMAMI_SCRIPT_SRC=https://umami.stitas.dev/script.js
+  PUBLIC_UMAMI_WEBSITE_ID=1608b878-0344-4885-8742-59f007e08ae4
+
+# name: ghcr-pull 
+# namespace: app-kaledinissveikinimaslt
+sealedImagePullSecret:
+  name: ghcr-pull
+  dockerConfig: AgB6mWRgUea4wO61TYNOK6JBLNQ0ESppitsE5LFKk0x3y5okED9YJVjfyOaS4T3EQ4bOjH3+oZ95eXgWMzYfqD3kX5o4L1SaYeIxosDC/jATPNUpmhKJ0+yzJBvhwFVreFyUvpLO4u2TxL0DqlfqnM01s+S/NGI2SbyEhP+5DQU1AUFXpullvqlEN69mT8EmGISHopOA+h/JFkIUMPvq3Nk/JsjIre82BsosDdX+wFAVPz9HK0Lldx5VD8fndLSGUNd4+JtQvwUfzmtc4oYfpDwjI7G+d60fMG9yNrlP9bK23NVmDhxoRVHgBAJDp0eYzS9mUwF1M8B+/Qd/lne7BhzOeWLHwDZAfD/JGDZLLcHNV4kgEkdW81bfX1by01nd5Mw2cwLH2snMX6YyUHTmxKKZXqmPr8a3y0bPfVqQLlr7/G4TyUInvdwbcuhtWlXEaADNRQ63LvGB1WQOYzz7J/5x5Ns8qLLrlH/5R8sEmsR7fZ4zfC7v4iwP7Va34kg2dZB/lL3zeTY7LBWnrN+az4m993rLt5ts6BIq5w/b0KwkP++pS07xPWAbBFbL/Uc4O6LeRPYqix3uwyu9BKUGNMwZGjz8cTcq4IpTI197C2PEbPE+Msxjbf3yoX55/yvbO5UKWuMX1/KSy9hKJ6p8rQG7tH3kmLJxfO4SVAzTB0UO79Vy4IfH+r3fHMtmgtL74Vj3zne+M2yl+Z3BQCbw6wB68mM55KTpR2X31QqtMxAgb+E77et5ZzLkiagNkzkgCNkWtq4eXuX1Ci2jD01SGz4IXdGZuExbclTG1RHzQQlmKLHVN02+KZOupIBWs4LLrLfk
+
+podAnnotations:
+  infra.stitas.dev/config-revision: "1"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
