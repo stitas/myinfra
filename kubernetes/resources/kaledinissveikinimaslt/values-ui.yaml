@@ -1,17 +1,14 @@
-image: ghcr.io/stitas/kaledinissveikinimas.lt-frontend:deb39ee9828decd4454e6151b2cae735132ca8e2
-
-imagePullSecrets:
-  - name: ghcr-pull
+image: 
 
 ingress:
   host: kaledinissveikinimas.lt
 
 config:
-  NODE_ENV=production
-  ORIGIN=https://kaledinissveikinimas.lt
-  PRIVATE_BACKEND_URL=http://kaledinissveikinimaslt
-  PUBLIC_UMAMI_SCRIPT_SRC=https://umami.stitas.dev/script.js
-  PUBLIC_UMAMI_WEBSITE_ID=1608b878-0344-4885-8742-59f007e08ae4
+  NODE_ENV: production
+  ORIGIN: https://kaledinissveikinimas.lt
+  PRIVATE_BACKEND_URL: http://kaledinissveikinimaslt
+  PUBLIC_UMAMI_SCRIPT_SRC: https://umami.stitas.dev/script.js
+  PUBLIC_UMAMI_WEBSITE_ID: 1608b878-0344-4885-8742-59f007e08ae4
 
 # name: ghcr-pull 
 # namespace: app-kaledinissveikinimaslt

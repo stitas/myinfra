@@ -1,8 +1,5 @@
 image: ghcr.io/stitas/stitasdev:fae88edda776d4a79354fc40f5dbf2302712cd16
 
-imagePullSecrets:
-  - name: ghcr-pull
-
 ingress:
   host: stitas.dev
 
