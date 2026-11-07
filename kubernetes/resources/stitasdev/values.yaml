@@ -1,4 +1,4 @@
-image: ghcr.io/stitas/stitasdev:34a33e081d790b0119f64c80e5b3296c2d611bd2
+image: ghcr.io/stitas/stitasdev:96b4aa0c15c504a62d8a83e8c94a7ad3ec69f4c5
 
 imagePullSecrets:
   - name: ghcr-pull
