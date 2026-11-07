@@ -286,6 +286,13 @@ rules at another provider:
 | TCP 80/443 | Public; HTTP-01 needs port 80 |
 | TCP 22 | Trusted management addresses |
 
+# Configure terminal
+
+If using kitty run this command from your pc to have better UX when ssh'ed in server:
+```bash
+infocmp -a xterm-kitty | ssh admin@your-server 'tic -x -o ~/.terminfo /dev/stdin'
+```
+
 ## TODO
 
 - implement git ops for personal repo and document in readme
