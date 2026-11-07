@@ -1,4 +1,4 @@
-image: ""
+image: ghcr.io/stitas/kaledinissveikinimaslt-ui:a750cf4e4db815ec93720daa7c5e11733c0931f0
 
 ingress:
   host: kaledinissveikinimas.lt
