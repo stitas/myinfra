@@ -3,7 +3,8 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -35,11 +36,16 @@ spec:
           image: {{ required "Set image to the full container image reference" .Values.image | quote }}
           ports:
             - name: http
-              containerPort: {{ .Values.containerPort }}
+              containerPort: {{ required "Set containerPort in the app's values.yaml" .Values.containerPort }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.readinessPath | quote }}
+              path: {{ .Values.readinessProbe.readinessPath | quote }}
               port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
           {{- if or .Values.config .Values.sealedSecrets }}
           envFrom:
             {{- if .Values.config }}

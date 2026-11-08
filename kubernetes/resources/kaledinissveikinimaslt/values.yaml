@@ -1,7 +1,6 @@
 image: ghcr.io/stitas/kaledinissveikinimaslt-app:1c862fe1e20ee8179d56463efbba8b7c4f04ff81
 
 containerPort: 8080
-readinessPath: /actuator/health/readiness
 
 ingress:
   host: kaledinissveikinimas.lt
@@ -51,3 +50,5 @@ resources:
     memory: 512Mi
   limits:
     memory: 1024Mi
+
+readinessPath: /actuator/health/readiness

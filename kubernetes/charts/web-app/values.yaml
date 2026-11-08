@@ -1,13 +1,15 @@
 image: ""
-containerPort: 3000
-readinessPath: /
-sealedImagePullSecret: {}
+containerPort: null
+
+replicaCount: 1
+revisionHistoryLimit: 3
 
 # Non-secret environment variables.
 config: {}
 
-# Ciphertext sealed for <release>-secrets in the app namespace.
+# Ciphertext sealed in the app namespace.
 sealedSecrets: {}
+sealedImagePullSecret: {}
 
 resources: {}
 securityContext: {}
@@ -20,3 +22,11 @@ ingress:
   host: ""
   # List of {path, pathType} entries. Empty or omitted uses / with Prefix matching.
   paths: []
+
+readinessProbe:
+  readinessPath: ""
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 0
+  failureThreshold: 5
+  successThreshold: 1
