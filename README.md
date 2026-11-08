@@ -316,6 +316,8 @@ infocmp -a xterm-kitty | ssh admin@your-server 'tic -x -o ~/.terminfo /dev/stdin
 
 ## Deployment of personal apps
 
+For web apps use the `web-app` helm chart
+
 Here is an example `deploy.yml` script for you GitHub actions:
 ```yml
 name: Build and deploy
@@ -425,5 +427,4 @@ Add a `MYINFRA_DEPLOY_TOKEN` secret token to your application GitHub repository.
 
 ## TODO
 
-- implement git ops for personal repo and document in readme
 - implement good logging and log viewing solution (maybe monitoring part?)
