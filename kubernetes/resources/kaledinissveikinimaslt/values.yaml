@@ -51,4 +51,5 @@ resources:
   limits:
     memory: 1024Mi
 
-readinessPath: /actuator/health/readiness
+readinessProbe:
+  path: /actuator/health/readiness

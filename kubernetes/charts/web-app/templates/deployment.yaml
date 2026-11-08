@@ -39,7 +39,7 @@ spec:
               containerPort: {{ required "Set containerPort in the app's values.yaml" .Values.containerPort }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.readinessProbe.readinessPath | quote }}
+              path: {{ .Values.readinessProbe.path | quote }}
               port: http
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}

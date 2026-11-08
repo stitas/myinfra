@@ -24,7 +24,7 @@ ingress:
   paths: []
 
 readinessProbe:
-  readinessPath: ""
+  path: ""
   initialDelaySeconds: 10
   periodSeconds: 15
   timeoutSeconds: 0
