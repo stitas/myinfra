@@ -1,4 +1,4 @@
-image: ghcr.io/stitas/kaledinissveikinimaslt-ui:42f764fe0ec9d1b8153831d624931d06167c8f32
+image: ghcr.io/stitas/kaledinissveikinimaslt-ui:6bcdc2704d140cf268ca99198cfe2f0c1dd8b578
 
 containerPort: 3000
 
