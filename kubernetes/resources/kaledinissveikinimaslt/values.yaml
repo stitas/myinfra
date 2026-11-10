@@ -1,4 +1,4 @@
-image: ghcr.io/stitas/kaledinissveikinimaslt-app:1c862fe1e20ee8179d56463efbba8b7c4f04ff81
+image: ghcr.io/stitas/kaledinissveikinimaslt-app:42f764fe0ec9d1b8153831d624931d06167c8f32
 
 containerPort: 8080
 
