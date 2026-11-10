@@ -17,7 +17,7 @@ spec:
     metadata:
       annotations:
         # Increment with copyparty.conf or accounts.conf changes
-        infra.stitas.dev/config-revision: "1"
+        infra.stitas.dev/config-revision: "2"
       labels:
         app: copyparty
     spec:

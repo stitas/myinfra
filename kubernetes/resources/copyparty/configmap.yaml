@@ -14,7 +14,8 @@ data:
       xff-src: 10.42.0.0/16
       xff-hdr: x-forwarded-for
       rproxy: -1
-      ban-403: no
+      dont-ban: any
+      loris: 0
 
     [/]
       /w/public
