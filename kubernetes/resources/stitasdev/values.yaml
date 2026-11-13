@@ -3,7 +3,9 @@ image: ghcr.io/stitas/stitasdev:fae88edda776d4a79354fc40f5dbf2302712cd16
 containerPort: 3000
 
 ingress:
-  host: stitas.dev
+  hosts:
+    - stitas.dev
+    - www.stitas.dev
 
 config:
   ORIGIN: https://stitas.dev

@@ -1,4 +1,5 @@
-{{- if .Values.ingress.host }}
+{{- $hosts := .Values.ingress.hosts | default (compact (list .Values.ingress.host)) }}
+{{- if $hosts }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -9,10 +10,11 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: {{ .Values.ingress.host | quote }}
+    {{- range $hosts }}
+    - host: {{ . | quote }}
       http:
         paths:
-          {{- range .Values.ingress.paths | default (list (dict "path" "/" "pathType" "Prefix")) }}
+          {{- range $.Values.ingress.paths | default (list (dict "path" "/" "pathType" "Prefix")) }}
           - path: {{ .path | quote }}
             pathType: {{ .pathType }}
             backend:
@@ -21,8 +23,11 @@ spec:
                 port:
                   number: 80
           {{- end }}
+    {{- end }}
   tls:
     - hosts:
-        - {{ .Values.ingress.host | quote }}
+        {{- range $hosts }}
+        - {{ . | quote }}
+        {{- end }}
       secretName: {{ .Release.Name }}-tls
 {{- end }}

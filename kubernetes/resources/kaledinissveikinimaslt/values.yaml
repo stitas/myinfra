@@ -3,7 +3,9 @@ image: ghcr.io/stitas/kaledinissveikinimaslt-app:a9e283579bf38255b5981ea862a3723
 containerPort: 8080
 
 ingress:
-  host: kaledinissveikinimas.lt
+  hosts:
+    - kaledinissveikinimas.lt
+    - www.kaledinissveikinimas.lt
   paths:
     - path: /api/v1/payment/hook
       pathType: Exact

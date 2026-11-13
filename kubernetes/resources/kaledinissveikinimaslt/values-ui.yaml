@@ -3,7 +3,9 @@ image: ghcr.io/stitas/kaledinissveikinimaslt-ui:6bcdc2704d140cf268ca99198cfe2f0c
 containerPort: 3000
 
 ingress:
-  host: kaledinissveikinimas.lt
+  hosts:
+    - kaledinissveikinimas.lt
+    - www.kaledinissveikinimas.lt
 
 config:
   NODE_ENV: production
